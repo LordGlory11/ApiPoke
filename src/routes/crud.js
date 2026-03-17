@@ -1,18 +1,14 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 
-const funciones = require('../controller/crud');
+const funciones = require("../controller/crud");
 
-router.get("todos",  funciones.todos);
-
-router.get("porid/:id", funciones.soloporid);
-
-router.post("insertar", funciones.insert);
-
-router.put("actualizar/:id", funciones.put);
-
-router.patch("actu/:id", funciones.pat);
-
-router.delete("eliminar/:id", funciones.dele);
+// CRUD REST principal para /api/crud (Digimon)
+router.get("/", funciones.todos);
+router.get("/:id", funciones.soloporid);
+router.post("/", funciones.insert);
+router.put("/:id", funciones.put);
+router.patch("/:id", funciones.pat);
+router.delete("/:id", funciones.dele);
 
 module.exports = router;

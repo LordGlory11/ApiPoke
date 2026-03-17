@@ -1,104 +1,132 @@
-const db = require('../models/connection');
+const db = require("../../db");
 
-async function todos(req, res){
-     try {
-            const query = "SELECT * FROM usuarios";
-            const resultado =  await db.query(query);
-            res.json(resultado.rows); 
-            
-        } catch (err) {
-            console.error(err);
-            res.status(500).send("Error");
-        }
+async function todos(req, res) {
+  try {
+    const result = await db.query(
+      "SELECT id, nombre, nivel, tipo FROM digimon_simple ORDER BY id ASC"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: "Error al obtener los Digimon" });
+  }
 }
 
-async function soloporid(req, res){
-    const { id } = req.params; 
-        try {
-            const query = "SELECT * FROM usuarios WHERE id = $1";
-            const resultado = await db.query(query, [id]);
-            
-            res.json(resultado.rows[0]);
-            
-        } catch (err) {
-            console.error(err);
-            res.status(500).send("Error al obtener el usuario");
-        }
-}
-
-function insert(req, res){
-     //console.log(req.body);
-    try {
-        const { usuario, password } = req.body;
-        const query = "INSERT INTO usuarios VALUES ($1, $2)";
-        db.query(query, [usuario, password]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Error al insertar datos");
+async function soloporid(req, res) {
+  const id = Number(req.params.id);
+  try {
+    const result = await db.query(
+      "SELECT id, nombre, nivel, tipo FROM digimon_simple WHERE id = $1",
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ mensaje: "Digimon no encontrado" });
     }
-    res.send("Datos insertados"); 
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: "Error al obtener el Digimon" });
+  }
 }
 
-function put(req, res){
-    const { id } = req.params;
-        const { usuario, password } = req.body; 
-    
-        try {
-            
-            const query = "UPDATE usuarios SET usuario = $1, password = $2 WHERE id = $3";
-            db.query(query, [usuario, password, id]);
-    
-            res.json({
-                mensaje: "Recurso actualizado con éxito",
-                id: id
-            });
-        } catch (err) {
-            console.error(err);
-            res.status(500).send("Error al actualizar los datos");
-        }
-}
+async function insert(req, res) {
+  const { id, nombre, nivel, tipo } = req.body;
 
-function pat(req, res){
-    const { id } = req.params;
-       const { password } = req.body; 
-    
-       try {
-            
-            const query = "UPDATE usuarios SET password = $1 WHERE id = $2";
-            db.query(query, [password, id]);
-    
-            res.json({
-                mensaje: "Contraseña actualizada con éxito",
-                id: id
-            });
-        } catch (err) {
-            console.error(err);
-            res.status(500).send("Error al actualizar la contraseña");
-        }
-}
+  if (!nombre || !nivel || !tipo) {
+    return res
+      .status(400)
+      .json({ mensaje: "Nombre, nivel y tipo son obligatorios" });
+  }
 
-function dele(req, res){
-    const { id } = req.params; 
-
-    try {
-        const query = "DELETE FROM usuarios WHERE id = $1";
-        db.query(query, [id]);
-
-        res.json({
-            mensaje: "Registro eliminado correctamente",
-            id: id
-        });
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Error al intentar eliminar el registro");
+  try {
+    let query;
+    let params;
+    if (id !== undefined && id !== null) {
+      query =
+        "INSERT INTO digimon_simple (id, nombre, nivel, tipo) VALUES ($1, $2, $3, $4) RETURNING id, nombre, nivel, tipo";
+      params = [id, nombre, nivel, tipo];
+    } else {
+      query =
+        "INSERT INTO digimon_simple (nombre, nivel, tipo) VALUES ($1, $2, $3) RETURNING id, nombre, nivel, tipo";
+      params = [nombre, nivel, tipo];
     }
+
+    const result = await db.query(query, params);
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: "Error al crear el Digimon" });
+  }
+}
+
+async function put(req, res) {
+  const id = Number(req.params.id);
+  const { nombre, nivel, tipo } = req.body;
+
+  if (!nombre || !nivel || !tipo) {
+    return res
+      .status(400)
+      .json({ mensaje: "Nombre, nivel y tipo son obligatorios" });
+  }
+
+  try {
+    const result = await db.query(
+      "UPDATE digimon_simple SET nombre = $1, nivel = $2, tipo = $3 WHERE id = $4 RETURNING id, nombre, nivel, tipo",
+      [nombre, nivel, tipo, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ mensaje: "Digimon no encontrado" });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: "Error al actualizar el Digimon" });
+  }
+}
+
+async function pat(req, res) {
+  const id = Number(req.params.id);
+  const { nombre, nivel, tipo } = req.body;
+
+  try {
+    const result = await db.query(
+      "UPDATE digimon_simple SET nombre = COALESCE($1, nombre), nivel = COALESCE($2, nivel), tipo = COALESCE($3, tipo) WHERE id = $4 RETURNING id, nombre, nivel, tipo",
+      [nombre ?? null, nivel ?? null, tipo ?? null, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ mensaje: "Digimon no encontrado" });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: "Error al actualizar parcialmente el Digimon" });
+  }
+}
+
+async function dele(req, res) {
+  const id = Number(req.params.id);
+  try {
+    const result = await db.query(
+      "DELETE FROM digimon_simple WHERE id = $1 RETURNING id",
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ mensaje: "Digimon no encontrado" });
+    }
+    res.json({ mensaje: "Registro eliminado correctamente", id });
+  } catch (err) {
+    console.error(err);
+    res
+      .status(500)
+      .json({ mensaje: "Error al intentar eliminar el registro" });
+  }
 }
 
 module.exports = {
-    todos,
-    soloporid,
-    insert,
-    put,
-    pat,
-    dele
-}
+  todos,
+  soloporid,
+  insert,
+  put,
+  pat,
+  dele,
+};

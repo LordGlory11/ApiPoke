@@ -1,89 +1,130 @@
-const db = require('../models/connection');
+const db = require("../../db");
 
-
-async function Poketodos(req, res) {
-    try {
-        const query = "SELECT * FROM pokemon_simple ORDER BY id ASC";
-        const resultado = await db.query(query);
-        res.json(resultado.rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Error al obtener los pokémon");
-    }
+async function obtenerTodos(req, res) {
+  try {
+    const result = await db.query(
+      "SELECT id, nombre, tipo FROM pokemon_simple ORDER BY id ASC"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: "Error al obtener los Pokémon" });
+  }
 }
 
-async function pokeporid(req, res) {
-    const { id } = req.params;
-    try {
-        const query = "SELECT * FROM pokemon_simple WHERE id = $1";
-        const resultado = await db.query(query, [id]);
-        
-        if (resultado.rows.length === 0) {
-            return res.status(404).send("Pokémon no encontrado");
-        }
-        res.json(resultado.rows[0]);
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Error al obtener el pokémon");
+async function obtenerPorId(req, res) {
+  const id = Number(req.params.id);
+  try {
+    const result = await db.query(
+      "SELECT id, nombre, tipo FROM pokemon_simple WHERE id = $1",
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ mensaje: "Pokémon no encontrado" });
     }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: "Error al obtener el Pokémon" });
+  }
 }
 
-async function pokeinsert(req, res) {
-    try {
-        const { id, nombre, tipo } = req.body;
-        const query = "INSERT INTO pokemon_simple (id, nombre, tipo) VALUES ($1, $2, $3)";
-        await db.query(query, [id, nombre, tipo]);
-        res.send("Pokémon registrado");
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Error al insertar el pokémon");
+async function crear(req, res) {
+  const { id, nombre, tipo } = req.body;
+
+  if (!nombre || !tipo) {
+    return res
+      .status(400)
+      .json({ mensaje: "Nombre y tipo son obligatorios" });
+  }
+
+  try {
+    let query;
+    let params;
+    if (id !== undefined && id !== null) {
+      query =
+        "INSERT INTO pokemon_simple (id, nombre, tipo) VALUES ($1, $2, $3) RETURNING id, nombre, tipo";
+      params = [id, nombre, tipo];
+    } else {
+      query =
+        "INSERT INTO pokemon_simple (nombre, tipo) VALUES ($1, $2) RETURNING id, nombre, tipo";
+      params = [nombre, tipo];
     }
-    res.send("Pokémon registrado");
+
+    const result = await db.query(query, params);
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: "Error al crear el Pokémon" });
+  }
 }
 
-async function pokeput(req, res) {
-    const { id } = req.params;
-    const { nombre, tipo } = req.body;
-    try {
-        const query = "UPDATE pokemon_simple SET nombre = $1, tipo = $2 WHERE id = $3";
-        await db.query(query, [nombre, tipo, id]);
-        res.json({ mensaje: "Pokémon actualizado", id });
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Error al actualizar el pokémon");
+async function actualizar(req, res) {
+  const id = Number(req.params.id);
+  const { nombre, tipo } = req.body;
+
+  if (!nombre || !tipo) {
+    return res
+      .status(400)
+      .json({ mensaje: "Nombre y tipo son obligatorios" });
+  }
+
+  try {
+    const result = await db.query(
+      "UPDATE pokemon_simple SET nombre = $1, tipo = $2 WHERE id = $3 RETURNING id, nombre, tipo",
+      [nombre, tipo, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ mensaje: "Pokémon no encontrado" });
     }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: "Error al actualizar el Pokémon" });
+  }
 }
 
-async function pokepat(req, res) {
-    const { id } = req.params;
-    const { tipo } = req.body;
-    try {
-        const query = "UPDATE pokemon_simple SET tipo = $1 WHERE id = $2";
-        await db.query(query, [tipo, id]);
-        res.json({ mensaje: "Tipo de pokémon actualizado", id });
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Error al actualizar el tipo");
+async function actualizarParcial(req, res) {
+  const id = Number(req.params.id);
+  const { nombre, tipo } = req.body;
+
+  try {
+    const result = await db.query(
+      "UPDATE pokemon_simple SET nombre = COALESCE($1, nombre), tipo = COALESCE($2, tipo) WHERE id = $3 RETURNING id, nombre, tipo",
+      [nombre ?? null, tipo ?? null, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ mensaje: "Pokémon no encontrado" });
     }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: "Error al actualizar parcialmente el Pokémon" });
+  }
 }
 
-async function pokedele(req, res) {
-    const { id } = req.params;
-    try {
-        const query = "DELETE FROM pokemon_simple WHERE id = $1";
-        await db.query(query, [id]);
-        res.json({ mensaje: "Pokémon eliminado correctamente", id });
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Error al eliminar el pokémon");
+async function eliminar(req, res) {
+  const id = Number(req.params.id);
+  try {
+    const result = await db.query(
+      "DELETE FROM pokemon_simple WHERE id = $1 RETURNING id",
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ mensaje: "Pokémon no encontrado" });
     }
+    res.json({ mensaje: "Pokémon eliminado correctamente", id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ mensaje: "Error al eliminar el Pokémon" });
+  }
 }
 
 module.exports = {
-    Poketodos,
-    pokeporid,
-    pokeinsert,
-    pokeput,
-    pokepat,
-    pokedele,
-} 
+  obtenerTodos,
+  obtenerPorId,
+  crear,
+  actualizar,
+  actualizarParcial,
+  eliminar,
+};

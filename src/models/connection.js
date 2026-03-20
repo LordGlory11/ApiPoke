@@ -1,4 +1,3 @@
-const { text } = require('express');
 const { Pool, Query } = require('pg');
 require('dotenv').config();
 

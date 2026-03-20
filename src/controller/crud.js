@@ -1,4 +1,4 @@
-const db = require("../../db");
+const db = require("../models/connection");
 
 async function todos(req, res) {
   try {

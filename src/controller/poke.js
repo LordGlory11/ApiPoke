@@ -29,6 +29,12 @@ async function obtenerPorId(req, res) {
   }
 }
 
+function idNumericoValido(id) {
+  if (id === undefined || id === null || id === "") return false;
+  const n = Number(id);
+  return Number.isInteger(n) && n > 0;
+}
+
 async function crear(req, res) {
   const { id, nombre, tipo } = req.body;
 
@@ -41,10 +47,10 @@ async function crear(req, res) {
   try {
     let query;
     let params;
-    if (id !== undefined && id !== null) {
+    if (idNumericoValido(id)) {
       query =
         "INSERT INTO pokemon_simple (id, nombre, tipo) VALUES ($1, $2, $3) RETURNING id, nombre, tipo";
-      params = [id, nombre, tipo];
+      params = [Number(id), nombre, tipo];
     } else {
       query =
         "INSERT INTO pokemon_simple (nombre, tipo) VALUES ($1, $2) RETURNING id, nombre, tipo";

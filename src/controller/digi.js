@@ -32,6 +32,12 @@ async function obtenerdigiporid(req, res) {
   }
 }
 
+function idNumericoValido(id) {
+  if (id === undefined || id === null || id === "") return false;
+  const n = Number(id);
+  return Number.isInteger(n) && n > 0;
+}
+
 async function creardigi(req, res) {
   const { id, nombre, nivel, tipo } = req.body;
 
@@ -44,10 +50,10 @@ async function creardigi(req, res) {
   try {
     let query;
     let params;
-    if (id !== undefined && id !== null) {
+    if (idNumericoValido(id)) {
       query =
         "INSERT INTO digimon_simple (id, nombre, nivel, tipo) VALUES ($1, $2, $3, $4) RETURNING id, nombre, nivel, tipo";
-      params = [id, nombre, nivel, tipo];
+      params = [Number(id), nombre, nivel, tipo];
     } else {
       query =
         "INSERT INTO digimon_simple (nombre, nivel, tipo) VALUES ($1, $2, $3) RETURNING id, nombre, nivel, tipo";
